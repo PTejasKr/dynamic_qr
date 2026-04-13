@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Link2, Image as ImageIcon, Wallet, Nfc, CheckCircle2, Copy, QrCode } from 'lucide-react';
+import { useSession, signIn } from 'next-auth/react';
 
 const TABS = [
   { id: 'link', label: 'Link', icon: Link2 },
@@ -11,6 +12,7 @@ const TABS = [
 ];
 
 export default function CreateQR() {
+  const { status } = useSession();
   const [activeTab, setActiveTab] = useState('link');
   const [name, setName] = useState('');
   const [targetData, setTargetData] = useState('');
@@ -49,13 +51,29 @@ export default function CreateQR() {
 
   const getTargetUrl = () => {
     if (typeof window === 'undefined' || !createdQr) return '';
-    return `${window.location.origin}/${createdQr.id}`;
+    return `${window.location.origin}/r/${createdQr.id}`;
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(getTargetUrl());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (status === "loading") {
+      return <div className="w-full flex items-center justify-center p-32"><div className="animate-spin text-foreground text-4xl font-bold">...</div></div>;
+  }
+  
+  if (status === "unauthenticated") {
+      return (
+        <div className="w-full flex flex-col items-center mt-32 space-y-6 animate-fade-in relative z-20">
+          <h2 className="text-4xl md:text-5xl font-black text-foreground">Login Required</h2>
+          <p className="text-foreground/70 text-lg font-medium text-center">You must sign in with Google to create QR Codes securely.</p>
+          <button onClick={() => signIn("google")} className="btn-3d flex items-center gap-2 px-8 py-3 mt-4 text-lg">
+             Sign in to Create
+          </button>
+        </div>
+      );
   }
 
   return (

@@ -21,14 +21,14 @@ export async function GET(request, props) {
     const params = await props.params;
     const { id } = params;
 
-    const qr = getQR(id);
+    const qr = await getQR(id);
 
     if (!qr) {
       return new NextResponse('QR not found or expired', { status: 404 });
     }
 
     // Increment scan count
-    incrementScan(id);
+    await incrementScan(id);
 
     const target = ensureAbsoluteUrl(qr.targetData);
 

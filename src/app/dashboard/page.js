@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Link2, Image as ImageIcon, Wallet, Nfc, ExternalLink, Activity, Edit2, Save, X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Link2, Image as ImageIcon, Wallet, Nfc, ExternalLink, Activity, Edit2, Save, X, Trash2, Trash, RefreshCw, Download } from 'lucide-react';
+import { useSession, signIn } from 'next-auth/react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const getTypeIcon = (type) => {
   switch(type) {
@@ -24,10 +26,13 @@ const getTypeColor = (type) => {
 };
 
 export default function Dashboard() {
+  const { data: session, status } = useSession();
   const [qrs, setQrs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({ name: '', targetData: '' });
+  const [viewQr, setViewQr] = useState(null);
+  const svgRef = useRef(null);
 
   const startEdit = (qr) => {
     setEditingId(qr.id);
@@ -56,14 +61,66 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    fetch('/api/qr')
-      .then(res => res.json())
-      .then(data => {
+  const deleteQR = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this QR code?")) return;
+    try {
+      const res = await fetch(`/api/qr/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setQrs(qrs.filter(q => q.id !== id));
+      }
+    } catch (e) {
+      console.error("Failed to delete QR", e);
+    }
+  };
+
+  const clearDashboard = async () => {
+    if (!window.confirm("Are you sure you want to delete ALL QR codes? This cannot be undone.")) return;
+    try {
+      const res = await fetch('/api/qr', { method: 'DELETE' });
+      if (res.ok) {
+        setQrs([]);
+      }
+    } catch (e) {
+      console.error("Failed to clear dashboard", e);
+    }
+  };
+
+  const refreshData = async () => {
+    if (status !== 'authenticated') return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/qr');
+      if (res.ok) {
+        const data = await res.json();
         setQrs(data.qrs || []);
-        setLoading(false);
-      });
-  }, []);
+      }
+    } catch (e) {
+      console.error("Failed to refresh data", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (status === 'authenticated') refreshData();
+    else if (status === 'unauthenticated') setLoading(false);
+  }, [status]);
+
+  if (status === "loading") {
+    return <div className="w-full flex items-center justify-center p-20 mt-20"><Activity className="animate-spin text-foreground" size={48} /></div>;
+  }
+  
+  if (status === "unauthenticated") {
+    return (
+      <div className="w-full flex flex-col items-center mt-32 space-y-6 animate-fade-in relative z-20">
+        <h2 className="text-4xl md:text-5xl font-black text-foreground">Login Required</h2>
+        <p className="text-foreground/70 text-lg font-medium text-center">You must sign in with Google to view and manage your generated QRs.</p>
+        <button onClick={() => signIn("google")} className="btn-3d flex items-center gap-2 px-8 py-3 mt-4 text-lg">
+           Sign in to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col items-center mt-12 space-y-8 animate-fade-in relative z-20">
@@ -74,6 +131,33 @@ export default function Dashboard() {
         <p className="text-lg md:text-xl text-foreground/70 font-medium">
           Manage and track your beautiful QR codes.
         </p>
+      </div>
+
+      <div className="w-full max-w-6xl flex justify-end px-4 gap-4">
+        <button 
+          onClick={refreshData}
+          disabled={loading}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl border-[3px] font-bold text-sm transition-all duration-200 ${
+            loading
+              ? 'bg-neutral-200 border-neutral-300 text-neutral-400 cursor-not-allowed dark:bg-surface dark:border-neutral-700 dark:text-neutral-500'
+              : 'bg-primary border-foreground text-foreground shadow-[3px_3px_0_var(--foreground)] hover:-translate-y-1 hover:brightness-110'
+          }`}
+        >
+          <RefreshCw size={16} strokeWidth={2.5} className={loading ? "animate-spin" : ""} />
+          Refresh Scans
+        </button>
+        <button 
+          onClick={clearDashboard}
+          disabled={qrs.length === 0}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl border-[3px] font-bold text-sm transition-all duration-200 ${
+            qrs.length === 0 
+              ? 'bg-neutral-200 border-neutral-300 text-neutral-400 cursor-not-allowed dark:bg-surface dark:border-neutral-700 dark:text-neutral-500'
+              : 'bg-red-500 border-foreground text-white shadow-[3px_3px_0_var(--foreground)] hover:-translate-y-1 hover:brightness-110'
+          }`}
+        >
+          <Trash size={16} strokeWidth={2.5} />
+          Clear Dashboard
+        </button>
       </div>
 
       <div className="card-minimal w-full max-w-6xl min-h-[400px]">
@@ -115,7 +199,10 @@ export default function Dashboard() {
                           onChange={(e) => setEditData({...editData, name: e.target.value})} 
                         />
                       ) : (
-                        qr.name
+                        <button onClick={() => setViewQr(qr)} className="hover:underline focus:outline-none text-left flex items-center gap-2">
+                          {qr.name}
+                          {qr.isProfileQR && <span className="text-[10px] bg-primary text-foreground px-2 py-0.5 rounded-full uppercase border-2 border-foreground font-black whitespace-nowrap">Profile</span>}
+                        </button>
                       )}
                     </td>
                     <td className="py-5 px-4">
@@ -156,7 +243,7 @@ export default function Dashboard() {
                             <Edit2 size={18} strokeWidth={2.5} />
                           </button>
                           <a 
-                            href={`/${qr.id}`} 
+                            href={`/r/${qr.id}`} 
                             target="_blank" 
                             rel="noreferrer" 
                             className="inline-flex p-2 rounded-xl bg-primary border-[3px] border-foreground text-foreground shadow-[3px_3px_0_var(--foreground)] hover:brightness-110 transform hover:-translate-y-1 transition-all"
@@ -164,6 +251,9 @@ export default function Dashboard() {
                           >
                             <ExternalLink size={18} strokeWidth={2.5} />
                           </a>
+                          <button onClick={() => deleteQR(qr.id)} className="inline-flex p-2 rounded-xl bg-surface border-[3px] border-foreground text-red-500 shadow-[3px_3px_0_var(--foreground)] hover:bg-red-50 transform hover:-translate-y-1 transition-all" title="Delete QR">
+                            <Trash2 size={18} strokeWidth={2.5} />
+                          </button>
                         </>
                       )}
                     </td>
@@ -175,6 +265,54 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {viewQr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface rounded-3xl border-[4px] border-foreground shadow-[8px_8px_0_var(--foreground)] w-full max-w-sm p-8 flex flex-col items-center relative animate-scale-up">
+            <button onClick={() => setViewQr(null)} className="absolute top-4 right-4 p-2 bg-neutral-200 hover:bg-neutral-300 text-foreground rounded-full border-[3px] border-foreground hover:-translate-y-1 transition-transform">
+              <X size={20} strokeWidth={3} />
+            </button>
+            <h3 className="text-2xl font-black mb-4 w-full text-center truncate">{viewQr.name}</h3>
+            
+            <div className="bg-white p-4 rounded-2xl border-[3px] border-foreground shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] mb-6 flex justify-center items-center" ref={svgRef}>
+              <QRCodeSVG
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/r/${viewQr.id}`}
+                size={220}
+                bgColor={"#ffffff"}
+                fgColor={"#000000"}
+                level={"H"}
+              />
+            </div>
+            
+            <p className="text-xs font-bold font-mono text-foreground/50 mb-6 w-full text-center uppercase tracking-widest">ID: {viewQr.id}</p>
+            
+            <div className="flex gap-4 w-full">
+               <button onClick={() => {
+                  const svg = svgRef.current.querySelector('svg');
+                  const svgData = new XMLSerializer().serializeToString(svg);
+                  const canvas = document.createElement("canvas");
+                  const ctx = canvas.getContext("2d");
+                  const img = new Image();
+                  img.onload = () => {
+                    canvas.width = 1000;
+                    canvas.height = 1000;
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, 1000, 1000);
+                    ctx.drawImage(img, 0, 0, 1000, 1000);
+                    const pngFile = canvas.toDataURL("image/png");
+                    const downloadLink = document.createElement("a");
+                    downloadLink.download = `QR_${viewQr.name.replace(/\s+/g, '_')}.png`;
+                    downloadLink.href = `${pngFile}`;
+                    downloadLink.click();
+                  };
+                  img.src = `data:image/svg+xml;base64,${btoa(svgData)}`;
+               }} className="btn-3d flex items-center justify-center gap-2 w-full py-3 flex-row text-sm">
+                 <Download size={18} strokeWidth={3} /> Download PNG
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

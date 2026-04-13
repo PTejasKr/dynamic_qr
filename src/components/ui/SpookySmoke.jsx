@@ -5,8 +5,8 @@ import { motion } from "framer-motion";
 export function SpookySmoke() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10 bg-background transition-colors duration-500">
-      {/* Heavy blur filter layer */}
-      <div className="absolute inset-0 backdrop-blur-[100px] z-10" />
+      {/* Optimized blur filter layer for lightweight performance */}
+      <div className="absolute inset-0 backdrop-blur-md z-10" />
 
       {/* Primary Neon Cyan Smoke Blob */}
       <motion.div
