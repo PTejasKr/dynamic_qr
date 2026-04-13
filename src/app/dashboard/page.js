@@ -287,27 +287,37 @@ export default function Dashboard() {
             <p className="text-xs font-bold font-mono text-foreground/50 mb-6 w-full text-center uppercase tracking-widest">ID: {viewQr.id}</p>
             
             <div className="flex gap-4 w-full">
-               <button onClick={() => {
-                  const svg = svgRef.current.querySelector('svg');
-                  const svgData = new XMLSerializer().serializeToString(svg);
-                  const canvas = document.createElement("canvas");
-                  const ctx = canvas.getContext("2d");
-                  const img = new Image();
-                  img.onload = () => {
-                    canvas.width = 1000;
-                    canvas.height = 1000;
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, 1000, 1000);
-                    ctx.drawImage(img, 0, 0, 1000, 1000);
-                    const pngFile = canvas.toDataURL("image/png");
+               <button onClick={async () => {
+                  try {
+                    const res = await fetch('/api/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        url: `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${viewQr.id}`,
+                        color: 'white' 
+                      })
+                    });
+                    
+                    if (!res.ok) {
+                      console.error("Failed to generate QR via backend.");
+                      return;
+                    }
+
+                    const blob = await res.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    
                     const downloadLink = document.createElement("a");
-                    downloadLink.download = `QR_${viewQr.name.replace(/\s+/g, '_')}.png`;
-                    downloadLink.href = `${pngFile}`;
+                    downloadLink.download = `QR_${viewQr.name.replace(/\s+/g, '_')}_Pro.png`;
+                    downloadLink.href = downloadUrl;
+                    document.body.appendChild(downloadLink);
                     downloadLink.click();
-                  };
-                  img.src = `data:image/svg+xml;base64,${btoa(svgData)}`;
+                    downloadLink.remove();
+                    window.URL.revokeObjectURL(downloadUrl);
+                  } catch (e) {
+                    console.error("Error downloading QR:", e);
+                  }
                }} className="btn-3d flex items-center justify-center gap-2 w-full py-3 flex-row text-sm">
-                 <Download size={18} strokeWidth={3} /> Download PNG
+                 <Download size={18} strokeWidth={3} /> Download Pro PNG
                </button>
             </div>
           </div>
