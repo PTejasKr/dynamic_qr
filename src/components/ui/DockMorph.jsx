@@ -74,7 +74,7 @@ export function DockMorph({ className, position = 'bottom' }) {
         <div className={cn(
             'relative flex items-center gap-4 p-3 rounded-full',
             position === 'left' ? 'flex-col gap-4 px-4 py-8' : 'flex-row',
-            'bg-white/80 dark:bg-black backdrop-blur-xl border-[3px] border-black dark:border-white shadow-[6px_6px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_rgba(255,255,255,0.8)]'
+            'bg-black dark:bg-black backdrop-blur-xl border-[3px] border-black dark:border-white shadow-[6px_6px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_rgba(255,255,255,0.8)]'
           )}>
           {dockItems.map((item, i) => (
             <Tooltip key={item.label}>
