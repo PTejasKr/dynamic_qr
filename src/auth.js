@@ -4,8 +4,8 @@ import GoogleProvider from "next-auth/providers/google";
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "dummy_client_id",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy_client_secret",
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
   callbacks: {
