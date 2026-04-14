@@ -163,7 +163,7 @@ export const EtheralBackground = () => {
             animation={{ scale: 100, speed: 90 }}
             noise={{ opacity: 1, scale: 1.2 }}
             sizing="fill"
-            className="transition-opacity duration-500 opacity-30 dark:opacity-[0.15]"
+            className="transition-opacity duration-500 opacity-70 dark:opacity-70"
         />
     );
 }
